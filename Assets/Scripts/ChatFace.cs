@@ -13,6 +13,7 @@ public class ChatFace : MonoBehaviour
     [SerializeField] private InputField inputField;
     [SerializeField] private Button button;
     [SerializeField] private ScrollRect scroll;
+    private PersistentData persistentData;
 
     [SerializeField] private RectTransform sent;
     [SerializeField] private RectTransform received;
@@ -23,9 +24,22 @@ public class ChatFace : MonoBehaviour
     private List<ChatMessage> messages = new List<ChatMessage>();
     private string prompt = "Act as a care taker sitting right next to the user, have a converstation to gauge their mental & cognitive state. Don't break character. Don't ever mention that you are an AI model.";
 
+    void Awake()
+    {
+        PersistentData pd = GameObject.FindFirstObjectByType<PersistentData>();
+        persistentData = pd;
+    }
+
     private void Start()
     {
         button.onClick.AddListener(SendReply);
+
+        if (persistentData != null)
+        { 
+            persistentData.SetStartTime();
+            persistentData.IncrementSessionCount();
+        }
+
     }
 
     private void AppendMessage(ChatMessage message)
@@ -49,9 +63,18 @@ public class ChatFace : MonoBehaviour
             Content = inputField.text
         };
 
-        AppendMessage(newMessage);
+        AppendMessage(newMessage); //appending user message
 
-        if (messages.Count == 0) newMessage.Content = prompt + "\n" + inputField.text;
+        if (messages.Count == 0)
+        {
+            var promptMessage = new ChatMessage()
+            {
+                Role = "user",
+                Content = prompt
+            };
+
+            messages.Add(promptMessage);
+        }
 
         messages.Add(newMessage);
 
@@ -72,15 +95,31 @@ public class ChatFace : MonoBehaviour
             message.Content = message.Content.Trim();
 
             messages.Add(message);
-            AppendMessage(message);
+            AppendMessage(message); //appending openAI message
+            if (persistentData != null)
+            {
+                persistentData.IncrementQueryCount();
+            }
         }
         else
         {
-            Debug.LogWarning("No text was generated from this prompt.");
+            Debug.LogWarning("No text was generated from this prompt: \"" + newMessage.Content + "\"");
         }
 
         button.enabled = true;
         inputField.enabled = true;
+    }
+
+    public void EndSessionCall()
+    {
+        if(persistentData != null)
+        {
+            persistentData.RecordSession(messages);
+        }
+        else
+        {
+            Debug.LogWarning("No persistent data found, session not recorded");
+        }
     }
     
 }
