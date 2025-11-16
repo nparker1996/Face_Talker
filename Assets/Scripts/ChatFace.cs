@@ -9,22 +9,27 @@ using UnityEngine.UI;
 public class UnityStringEvent : UnityEvent<string> { }
 
 
-public class ChatFace : MonoBehaviour
+public class ChatFace : MonoBehaviour, ISpeechToTextListener
 {
     [SerializeField] private InputField inputField;
-    [SerializeField] private Button button;
+    [SerializeField] private Button sendButton;
     [SerializeField] private ScrollRect scroll;
     private PersistentData persistentData;
 
     [SerializeField] private RectTransform sent;
     [SerializeField] private RectTransform received;
-    
+
+    [SerializeField] private Button SpeechToTextButton;
+    public bool PreferOfflineRecognition;
+    private float normalizedVoiceLevel;
+    private bool sttIsBusy;
+
     private float height;
     private OpenAIApi openai = new OpenAIApi();
 
     private SessionData session;
     private List<ChatMessage> messages = new List<ChatMessage>();
-    private string prompt = "Act as a care taker sitting right next to the user, have a converstation to gauge their mental & cognitive state. Don't break character. Don't ever mention that you are an AI model.";
+    private string prompt = "Act as a care taker sitting right next to the user, have a converstation to gauge their mental & cognitive state. Don't break character. Don't ever mention that you are an AI model. Avoid going over 100 words per response";
 
     void Awake()
     {
@@ -34,9 +39,33 @@ public class ChatFace : MonoBehaviour
 
     private void Start()
     {
-        button.onClick.AddListener(SendReply);
+        SpeechToText.Initialize("en-US");
+        SpeechToTextButton.onClick.AddListener(StartSpeechToText);
+        sttIsBusy = false;
 
+        sendButton.onClick.AddListener(SendReply);
         session = new SessionData();
+    }
+
+    private void Update()
+    {
+        SpeechToTextButton.interactable = SpeechToText.IsServiceAvailable(PreferOfflineRecognition);
+        if(sttIsBusy != SpeechToText.IsBusy())
+        {
+            sttIsBusy = SpeechToText.IsBusy();
+            if (sttIsBusy) // Speech to text is happening
+            {
+                SpeechToTextButton.onClick.RemoveListener(StartSpeechToText);
+                SpeechToTextButton.onClick.AddListener(StopSpeechToText);
+                SpeechToTextButton.gameObject.GetComponentInChildren<Text>().text = "Stop Speaking";
+            }
+            else // Speech to text is not happening
+            {
+                SpeechToTextButton.onClick.RemoveListener(StopSpeechToText);
+                SpeechToTextButton.onClick.AddListener(StartSpeechToText);
+                SpeechToTextButton.gameObject.GetComponentInChildren<Text>().text = "Start Speaking";
+            }
+        }
     }
 
     private void AppendMessage(ChatMessage message)
@@ -75,7 +104,7 @@ public class ChatFace : MonoBehaviour
 
         messages.Add(newMessage);
 
-        button.enabled = false;
+        sendButton.enabled = false;
         inputField.text = "";
         inputField.enabled = false;
 
@@ -101,7 +130,7 @@ public class ChatFace : MonoBehaviour
             Debug.LogWarning("No text was generated from this prompt: \"" + newMessage.Content + "\"");
         }
 
-        button.enabled = true;
+        sendButton.enabled = true;
         inputField.enabled = true;
     }
 
@@ -122,14 +151,60 @@ public class ChatFace : MonoBehaviour
             }
         }
 
-        if (persistentData != null)
-        {
-            persistentData.RecordSession(session);
-        }
-        else
-        {
-            Debug.LogWarning("No session found, session not recorded");
-        }
+        if (persistentData != null) { persistentData.RecordSession(session); }
+        else { Debug.LogWarning("No session found, session not recorded"); }
     }
-    
+
+    #region STT
+    public void StartSpeechToText()
+    {
+        SpeechToText.RequestPermissionAsync((permission) =>
+        {
+            if (permission == SpeechToText.Permission.Granted)
+            {
+                if (SpeechToText.Start(this, preferOfflineRecognition: PreferOfflineRecognition))
+                {
+                    inputField.text = "";
+                }
+                else { inputField.text = "Couldn't start speech recognition session!"; }
+            }
+            else { inputField.text = "Permission is denied!"; }
+        });
+    }
+
+    public void StopSpeechToText()
+    {
+        SpeechToText.ForceStop();
+    }
+
+    void ISpeechToTextListener.OnReadyForSpeech()
+    {
+        Debug.Log("OnReadyForSpeech");
+    }
+
+    void ISpeechToTextListener.OnBeginningOfSpeech()
+    {
+        Debug.Log("OnBeginningOfSpeech");
+    }
+
+    void ISpeechToTextListener.OnVoiceLevelChanged(float normalizedVoiceLevel)
+    {
+        // Note that On Android, voice detection starts with a beep sound and it can trigger this callback. You may want to ignore this callback for ~0.5s on Android.
+        this.normalizedVoiceLevel = normalizedVoiceLevel;
+    }
+
+    void ISpeechToTextListener.OnPartialResultReceived(string spokenText)
+    {
+        Debug.Log("OnPartialResultReceived: " + spokenText);
+        inputField.text = spokenText;
+    }
+
+    void ISpeechToTextListener.OnResultReceived(string spokenText, int? errorCode)
+    {
+        Debug.Log("OnResultReceived: " + spokenText + (errorCode.HasValue ? (" --- Error: " + errorCode) : ""));
+        inputField.text = spokenText;
+        normalizedVoiceLevel = 0f;
+    }
+
+    #endregion
 }
