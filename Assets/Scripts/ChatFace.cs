@@ -111,14 +111,15 @@ public class ChatFace : MonoBehaviour
         if (messages.Count > 0)
         {
             messages.RemoveAt(0); // removing prompt
-            session.chatMessages = messages;
-        }
 
-        foreach(var chatMessage in messages)
-        {
-            int wordCount = chatMessage.Content.Trim().Split(' ').Length;
-            if (chatMessage.Role == "user") session.userWordCount += wordCount;
-            else session.chatWordCount += wordCount;
+            foreach (var message in messages)
+            {
+                session.chatMessages.Add(new SerializableChatMessage(message.Role, message.Content));
+
+                int wordCount = message.Content.Trim().Split(' ').Length;
+                if (message.Role == "user") session.userWordCount += wordCount;
+                else session.chatWordCount += wordCount;
+            }
         }
 
         if (persistentData != null)

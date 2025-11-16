@@ -2,11 +2,13 @@ using OpenAI;
 using System;
 using System.Collections.Generic;
 using Unity.VisualScripting;
+using UnityEditor.Overlays;
 using UnityEngine;
 
 public class PersistentData : MonoBehaviour
 {
     public static PersistentData Instance { get; private set; } // Static reference to the single instance
+    private static string LogPath;
 
     private List<SessionData> sessions;
 
@@ -21,13 +23,14 @@ public class PersistentData : MonoBehaviour
         {
             Destroy(this.gameObject); // Destroy duplicate instances
         }
+        LogPath = Application.persistentDataPath + "/log.json";
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         sessions = new List<SessionData>();
-        // check if analytics exists, check in if do
+        Debug.Log(LogPath);
     }
 
     // Update is called once per frame
@@ -39,7 +42,7 @@ public class PersistentData : MonoBehaviour
     public void RecordSession(SessionData session)
     {
         sessions.Add(session);
-        // add to json analytics file
+        System.IO.File.AppendAllText(LogPath, session.ToJson() + "\n");
     }
     public List<SessionData> GetSessions() { return sessions; }
     public int GetSessionCount() { return sessions.Count; }

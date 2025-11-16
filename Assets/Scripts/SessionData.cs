@@ -6,12 +6,12 @@ using UnityEngine;
 [Serializable]
 public class SessionData
 {
-    private static long sessionStartTime;
+    public long sessionStartTime = 0;
     public long sessionEndTime = 0;
     public int userWordCount = 0;
     public int chatWordCount = 0;
     public int queryCount = 0;
-    public List<ChatMessage> chatMessages { get; set; } = new List<ChatMessage>();
+    public List<SerializableChatMessage> chatMessages = new List<SerializableChatMessage>();
 
     public SessionData()
     {
@@ -30,5 +30,23 @@ public class SessionData
     public void IncrementQueryCount()
     {
         queryCount++;
+    }
+
+    public string ToJson()
+    {
+        return JsonUtility.ToJson(this);
+    }
+}
+
+// doing this because ChatMessage is not serializable
+[Serializable]
+public class SerializableChatMessage
+{
+    public string Role;
+    public string Content;
+
+    public SerializableChatMessage(string role, string content)
+    {
+        Role = role; Content = content;
     }
 }

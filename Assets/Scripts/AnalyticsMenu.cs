@@ -1,9 +1,10 @@
-using TMPro;
 using System;
+using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using static UnityEngine.Rendering.CoreUtils;
 
 public class AnalyticsMenu : MainMenu
 {
