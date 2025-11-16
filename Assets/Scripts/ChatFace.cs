@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using OpenAI;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
-using OpenAI;
 
 [System.Serializable]
 public class UnityStringEvent : UnityEvent<string> { }
@@ -21,6 +22,7 @@ public class ChatFace : MonoBehaviour
     private float height;
     private OpenAIApi openai = new OpenAIApi();
 
+    private SessionData session;
     private List<ChatMessage> messages = new List<ChatMessage>();
     private string prompt = "Act as a care taker sitting right next to the user, have a converstation to gauge their mental & cognitive state. Don't break character. Don't ever mention that you are an AI model.";
 
@@ -34,12 +36,7 @@ public class ChatFace : MonoBehaviour
     {
         button.onClick.AddListener(SendReply);
 
-        if (persistentData != null)
-        { 
-            persistentData.SetStartTime();
-            persistentData.IncrementSessionCount();
-        }
-
+        session = new SessionData();
     }
 
     private void AppendMessage(ChatMessage message)
@@ -96,10 +93,8 @@ public class ChatFace : MonoBehaviour
 
             messages.Add(message);
             AppendMessage(message); //appending openAI message
-            if (persistentData != null)
-            {
-                persistentData.IncrementQueryCount();
-            }
+
+            session.IncrementQueryCount();
         }
         else
         {
@@ -112,13 +107,27 @@ public class ChatFace : MonoBehaviour
 
     public void EndSessionCall()
     {
-        if(persistentData != null)
+        session.sessionEndTime = DateTime.Now.Ticks;
+        if (messages.Count > 0)
         {
-            persistentData.RecordSession(messages);
+            messages.RemoveAt(0); // removing prompt
+            session.chatMessages = messages;
+        }
+
+        foreach(var chatMessage in messages)
+        {
+            int wordCount = chatMessage.Content.Trim().Split(' ').Length;
+            if (chatMessage.Role == "user") session.userWordCount += wordCount;
+            else session.chatWordCount += wordCount;
+        }
+
+        if (persistentData != null)
+        {
+            persistentData.RecordSession(session);
         }
         else
         {
-            Debug.LogWarning("No persistent data found, session not recorded");
+            Debug.LogWarning("No session found, session not recorded");
         }
     }
     

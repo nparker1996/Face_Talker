@@ -25,11 +25,24 @@ public class AnalyticsMenu : MainMenu
     {
         if(persistentData != null)
         {
-            UserWordCountText.text += persistentData.GetUserWordCount();
-            ChatWordCountText.text += persistentData.GetChatWordCount();
+            int totalUserWordCount = 0;
+            int totalChatWordCount = 0;
+            int totalQueryCount = 0;
+            long totalSessionTime = 0;
+
+            foreach(SessionData session in persistentData.GetSessions())
+            {
+                totalUserWordCount += session.userWordCount;
+                totalChatWordCount += session.chatWordCount;
+                totalQueryCount += session.queryCount;
+                totalSessionTime += session.SessionTime();
+            }
+
+            UserWordCountText.text += totalUserWordCount;
+            ChatWordCountText.text += totalChatWordCount;
             SessionCountText.text += persistentData.GetSessionCount();
-            QueryCountText.text += persistentData.GetQueryCount();
-            SessionTimeText.text += TimeSpan.FromTicks(persistentData.GetSessionTime());
+            QueryCountText.text += totalQueryCount;
+            SessionTimeText.text += TimeSpan.FromTicks(totalSessionTime);
         }
     }
 }
