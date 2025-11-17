@@ -1,8 +1,6 @@
 using OpenAI;
 using System;
 using System.Collections.Generic;
-using Unity.VisualScripting;
-using UnityEditor.Overlays;
 using UnityEngine;
 
 public class PersistentData : MonoBehaviour
@@ -31,12 +29,6 @@ public class PersistentData : MonoBehaviour
     {
         sessions = new List<SessionData>();
         Debug.Log(LogPath);
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 
     public void RecordSession(SessionData session)
